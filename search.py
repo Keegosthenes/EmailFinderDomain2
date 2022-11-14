@@ -2,6 +2,8 @@ import requests
 from random import randint
 from bs4 import BeautifulSoup
 import re
+import time
+import urllib3
 
 user_agent = [
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_5) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/13.1.1 Safari/605.1.15',
@@ -13,7 +15,9 @@ user_agent = [
 
 
 def search(target):
-    response = requests.get(f"http://{target}/contact", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])})
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+    time.sleep(0.01)
+    response = requests.get(f"http://{target}/contact", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])}, verify= False)
     
     if response.status_code != 200:
         if retry(target) == None:
@@ -25,12 +29,13 @@ def search(target):
 
 
 def retry(target):
-
-    response = requests.get(f"http://{target}", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])})
+    time.sleep(0.01)
+    response = requests.get(f"http://{target}", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])}, verify= False)
 
     if response.status_code != 200:
         target = target.split('.', 1)[0]
-        response = requests.get(f"http://{target}.com", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])})
+        time.sleep(0.01)
+        response = requests.get(f"http://{target}.com", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])}, verify= False)
 
     # Ici pour ajouter une autre alternative à la requête
 
@@ -44,37 +49,41 @@ def get_email(response, target):
     soup = BeautifulSoup(response.text, "html.parser")
 
     text_soup = soup.get_text(" ")
+    list_index = []
+    for m in re.finditer("@"+f"{target.split('.',1)[0]}", text_soup):
+        list_index.append(m.start())
 
+    emails_list = []
 
+    for str_index in list_index:
+        index_start = ""
+        i = 0
+        first_part = []
+        while index_start != " ":
+            i -= 1
+            index_start = text_soup[str_index+i]
+            first_part.append(text_soup[str_index+i])
 
-    str_index = text_soup.find("@"+f"{target.split('.',1)[0]}")
+        last_part = []
+        index_start = ""
+        i = 0
+        while index_start != " ":
+            index_start = text_soup[str_index-i]
+            last_part.append(text_soup[str_index-i])
+            i -= 1
 
-    index_end = ""
-    i = 0
-    first_part = []
-    while index_end != " ":
-        i -= 1
-        index_end = text_soup[str_index+i]
-        first_part.append(text_soup[str_index+i])
+        res = "".join(first_part)[::-1]+"".join(last_part)
 
+        if not "@" or not "." in res:
+            break
+        else:
+            emails_list.append(res)
 
-    last_part = []
-    index_start = ""
-    i = 0
-    while index_start != " ":
-        index_start = text_soup[str_index-i]
-        last_part.append(text_soup[str_index-i])
-        i -= 1
-
-    res = "".join(first_part)[::-1]+"".join(last_part)
-
-    if not "@" in res or not "." in res:
-        res = " Aucun mail"
-
-
-    print(f"{target} :{res}")
     
-    return res
+    print(f"{target} : {emails_list}")
+
+    return emails_list
+
 
     # email.append(soup.body.text[str_index+i])
     
