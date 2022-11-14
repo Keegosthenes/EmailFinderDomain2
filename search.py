@@ -17,15 +17,20 @@ user_agent = [
 def search(target):
     urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
     time.sleep(0.01)
-    response = requests.get(f"http://{target}/contact", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])}, verify= False)
+    try:
+        response = requests.get(f"http://{target}/contact", headers = {"User-agent" : "{}".format(user_agent[randint(0,4)])}, verify= False)
     
-    if response.status_code != 200:
-        if retry(target) == None:
-            print(f"{target} : Erreur {response.status_code}")
-        else:
-            response = retry(target)
+        if response.status_code != 200:
+            if retry(target) == None:
+                print(f"{target} : Erreur {response.status_code}")
+            else:
+                response = retry(target)
+    except:
+        return[]
 
     return get_email(response, target)
+
+    
 
 
 def retry(target):
@@ -79,10 +84,11 @@ def get_email(response, target):
         else:
             emails_list.append(res)
 
-    
-    print(f"{target} : {emails_list}")
+    emails_list_un = [*set(emails_list)]
 
-    return emails_list
+    print(f"{target} : {emails_list_un}")
+
+    return emails_list_un
 
 
     # email.append(soup.body.text[str_index+i])
